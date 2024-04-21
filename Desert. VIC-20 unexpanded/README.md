@@ -14,18 +14,26 @@ Inventory. Tells you the items you carry, if any.
 And more.
 
 
-Dowload this game (and support knowledge) from: epicadventures.itch.io/vic-20-unexpanded-adventures
+Download this game (and support knowledge) here: http://epicadventures.itch.io/vic-20-unexpanded-adventures
 
-Learn de development guide and learn assembly here: EpicAdventuresRepos.github.io
+Read the development guide here: http://EpicAdventuresRepos.github.io
 
-Desert Student Edition.asm
+## Files
+
+*Desert Student Edition.asm*  
 Source code of the version used in the development guide.
 
-Desert.asm
-Final version of the game.
+*Desert VIC-20.asm*  
+Source code for VIC-20.
 
-Desert.prg
-Binary. Drag & drop on Vice (or other emulator) yo play.
+*Desert C-64.asm*  
+Source code for C-64.
 
-Manual.pdf
-Learn how to play.
+*Desert VIC-20.prg*  
+Binary for VIC-20. Drag & drop on Vice (or other emulator) to play.
+
+*Desert C-64.prg*  
+Binary for Commodore 64. Drag & drop on Vice (or other emulator) to play.
+
+*Manual.pdf*  
+Basic commands and extra help if you need it.

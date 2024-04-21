@@ -48,9 +48,9 @@ Init
         jsr Init_Sound_Color
 
         ; Initial pos
-        lda #$0
+        lda #$3
         sta player_x
-        lda #$0
+        lda #$3
         sta player_y
 
         ; Life
@@ -75,14 +75,14 @@ Set_Initial_Water
 ;----
 Init_Sound_Color
         ; Backgroud yellow
-        ; Border yellos
+        ; Border yellow
         lda #$7f
         ; Changes color background 
         ; and border
         sta $900f
 
 
-        ; Set volume
+        ; Set volume for sound effects
         ldx #$15
         stx $900e
 
@@ -133,14 +133,15 @@ PrintLife
         rts
 
 ;--------------------------
-; Cambiar el nombre
-; no imprime nada
-; Recupera el tipod e loc que es
-; y lo guaerda en current_loc_type
+; Wrong name for a subroutine
+; This one prints nothing
+; instead, it calculate the content of the LOC
+; and stores it current_loc_type
+; It is very usefull
 PrintLOC
         ; check if player is in the temple
         lda player_x
-        cmp #$10
+        cmp #$10 ; This number is not in map
         bne @Not_in_Temple
 
         jsr Loc_Temple
@@ -149,7 +150,6 @@ PrintLOC
 @Not_in_Temple
         ; Calculate LOC number from x and y
         jsr Return_LOC_in_X
-        ;stx mem_mon
 
         ; I use 4 bits for LOC content
         ; So I dicie LOC / 2
@@ -160,7 +160,6 @@ PrintLOC
         ; Load LOC content
         tax
         lda row00,x
-        ;sta mem_mon+1
         tax
 
         ; Load again LOC number to see
@@ -175,21 +174,19 @@ PrintLOC
         lsr
         lsr
         lsr
-        ;sta mem_mon+2
-        ;jmp @Print_LOC
+
         jmp @Exit
 
 @LOC_is_odd
         txa
         and #%00001111 
-        ;sta mem_mon+3
 
 @Exit
         ; Saves current LOC type
         sta current_loc_type 
         rts
 
-; No usada
+; Desert does not use this subroutine
 @Print_LOC
         pha
         lda #<str_you_are
@@ -1118,7 +1115,7 @@ set_flag_y
 clear_flag_y
         jsr set_x_y
         lda masks,y
-        eor #$FF ; Invierto la mask
+        eor #$FF ; Invert la mask
         and flags,x
         sta flags,x
         rts ; Acumulador
@@ -1244,7 +1241,7 @@ masks
         BYTE %00000001, %00000010, %00000100, %00001000, %00010000, %00100000, %01000000, %10000000
 
 ;--- Items ----------
-; Estos objetos estan duplicados.
+
 str_idol_name TEXT "idol ", $0
 str_flask_name TEXT "flask ", $0
 sr_compass_name TEXT "compass ", $0
@@ -1288,25 +1285,23 @@ TEMPLE_LOC = $a ; Temple 1010
 ANKH_LOC = $b ; Object 4: Ankh 1011
 FINAL_LOC = $c ; End of game 1100
 ; Vision of an enemy 1101
-           ;0,1                        ;6, 7
-row00 BYTE EMPTY,     EMPTY, %00000110, %01000110, EMPTY,EMPTY, EMPTY, EMPTY
-row01 BYTE %01110000, EMPTY, EMPTY, %01100000, EMPTY, %00001001, EMPTY, %00100001
-row02 BYTE EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY,   EMPTY, %01100000
-row03 BYTE %00010000, EMPTY,EMPTY, %00010010, EMPTY, %00000101,%00000110, %01000110
-row04 BYTE %00100000, EMPTY,EMPTY, EMPTY,EMPTY, %01100000,EMPTY, %01100000
-row05 BYTE %00000110, EMPTY,EMPTY, EMPTY, %00000110, %10000110, EMPTY, EMPTY
-row06 BYTE %01101000, %01100000, %00100000, EMPTY,EMPTY, %01100000, EMPTY, %01110000
-row07 BYTE %00000110, EMPTY,EMPTY, %00001010,EMPTY, %00000010,EMPTY, EMPTY
-row08 BYTE EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY
-row09 BYTE EMPTY, %01110000,EMPTY, EMPTY,EMPTY, %11010110,EMPTY, EMPTY
-row10 BYTE EMPTY, EMPTY,%00110011, EMPTY,EMPTY, $01100100,%01100000, %00000110
-row11 BYTE %00001011, EMPTY,EMPTY, EMPTY, %01100000, %00000110,EMPTY, %01100100
-row12 BYTE EMPTY, EMPTY,EMPTY, %00000110,%10000110, EMPTY,%00001100, %00000110
-row13 BYTE %00000010, %00010000,EMPTY, %00000001, %00000110, EMPTY,%00010001, %00100000
-row14 BYTE EMPTY, EMPTY,EMPTY, %00000001,EMPTY, EMPTY,EMPTY, EMPTY
-row15 BYTE EMPTY, EMPTY,EMPTY, %00000010,EMPTY, EMPTY,EMPTY, EMPTY
-
-
+           ;0,1                             ;6, 7
+row00 BYTE EMPTY,     EMPTY,     %00000110, %01000110, EMPTY,     EMPTY,     EMPTY, EMPTY
+row01 BYTE %00000111, EMPTY,     EMPTY,     %01100000, EMPTY,     %00001001, EMPTY, %00100001
+row02 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY, %01100000
+row03 BYTE %00010000, EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00000101, %00000110, %01000110
+row04 BYTE %00100000, EMPTY,     %00000001, EMPTY,     EMPTY,     %01100000, EMPTY, %01100000
+row05 BYTE %00000110, EMPTY,     %00000010, EMPTY,     %00000110, %10000110, EMPTY, EMPTY
+row06 BYTE %01101000, %01100000, %00000001, EMPTY,     EMPTY,     %01100000, EMPTY, %01110000
+row07 BYTE %00000110, EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00000010,EMPTY, EMPTY
+row08 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,EMPTY, EMPTY
+row09 BYTE EMPTY,     %01110000, EMPTY,     EMPTY,     EMPTY,     %11010110, EMPTY,     EMPTY
+row10 BYTE EMPTY,     EMPTY,     %00110011, %00001010, EMPTY,     %01100100, %01100000, %00000110
+row11 BYTE %00001011, EMPTY,     EMPTY,     EMPTY,     %01100000, %00000110,EMPTY, %01100100
+row12 BYTE EMPTY,     EMPTY,     EMPTY,     %00000110, %10000110, EMPTY,%00001100, %00000110
+row13 BYTE %00000010, %00010001, EMPTY,     EMPTY,     %00000110, EMPTY, EMPTY, EMPTY
+row14 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY, EMPTY,%00010001, %00100000 ; 119
+row15 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY, EMPTY,EMPTY, EMPTY
 
 v_locs  WORD Loc_Empty, Loc_Birds, Loc_Oasis, Loc_Oasis_East, Loc_Ruk, Loc_Idol
         WORD Loc_Vibrates, Loc_Flask, Loc_Scorpion, Loc_Compass, Loc_Found_Temple
@@ -1362,7 +1357,7 @@ str_enemy_north  TEXT "an assasin at", RETURN, "the north", RETURN, $0
 str_intro       TEXT "you are lost in the", RETURN
                 TEXT "desert", RETURN
                 TEXT "you must find the city" ; No Return here
-                TEXT "of al jadur before you" ; No Return here
+                TEXT "of al-jadur before you" ; No Return here
                 TEXT "run out of water and", RETURN 
                 TEXT "life", RETURN, RETURN
                 TEXT "desert is full of", RETURN
