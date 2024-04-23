@@ -3,7 +3,9 @@
 ; 12E5 > 1315 > 13CA > 13DE > 14D4 > 15D1
 ; 165A > 1720 > 1779 > 18CC > 18F3 > 1940
 ; 191D > 1958
-
+; 1989
+; 19FD > 1A0B > 1A65 > 1A75
+ 
 
         BYTE    $0B, $10, $0A, $00, $9E, $34, $31, $30, $39, $00
         BYTE    $00, $00
@@ -14,6 +16,13 @@ CHROUT = $ffd2
 CHIN = $FFCF 
 CLRS = $e55f ; CLR Screen
 PRTFIX = $ddcd ; Convert and pritns and integer
+
+; Random subroutines
+RND_S = $E09b ;  BASIC RND (no standard entry point)
+MULTEN = $DAE2 ;  Multiply FAC by 10.
+INT = $DCCC ;  FAC is rounded down to an integer in floating point format (4 bytes)
+INTIDX = $D1AA ; INTIDX (A higher, Y lower)
+
  
 ; Constanst
 RETURN = $0D
@@ -23,16 +32,19 @@ SPACE = $20 ; Space
 ;--- Main --------------------------
 
 Game_Begin
-         ; Reset stack
-        ldx #$ff
-        txs
-
         ; Init variables
+
+        ; Before init for resuing some routines.
+        jsr Random_City
         jsr Init
         ; show intructions of the game
         jsr Instructions
         
 LocLoop
+        ; Reset stack
+        ldx #$ff
+        txs
+
         jsr CLRS
         ; TODO check if you arrived
         jsr PrintStats
@@ -47,11 +59,12 @@ MainLoop
 
 ;---------------------------------------
 Init    
+        jsr Init_Sound_Color
 
         ; Initial pos
-        lda #$0
+        lda #$3
         sta player_x
-        lda #$0
+        lda #$3
         sta player_y
 
         ; Life
@@ -63,6 +76,9 @@ Init
         sta flags 
         sta flags+1
 
+        ; Points to zero
+        sta points
+
 
 Set_Initial_Water
         lda #INITIAL_WATER
@@ -70,6 +86,138 @@ Set_Initial_Water
 
         ; Init flags
 
+        rts
+
+
+;----
+Init_Sound_Color
+        ; Backgroud yellow
+        ; Border yellow
+        lda #$7f
+        ; Changes color background 
+        ; and border
+        sta $900f
+
+
+        ; Set volume for sound effects
+        ldx #$15
+        stx $900e
+
+        rts
+
+
+;--------------------------------------
+; Quitar código repetido
+Random_City
+
+        ; Clean previous temple
+        ;
+        ; Ninguna casilla tiene nada al lado, así
+        ; que puedo ponerla a vacío tranquilamente.
+        ; Probar
+        lda temple_y
+        asl
+        asl
+        asl
+        asl
+        clc
+        adc temple_x
+        lsr
+        tax
+        lda #EMPTY
+        sta row00,x 
+        
+
+
+
+        ; Calculate a random number
+        ; Between 0 and 9
+        ;
+        jsr RND_S
+        jsr MULTEN ; MULTEN
+        jsr INT
+        jsr INTIDX ; INTIDX (A higher, Y lower)
+        ; A is always 0
+        ; Random numer is in Y
+
+        ;sty mem_mon
+
+        ; Repeat this code is shorter than call
+        ; subroutine Return_LOC_in_X
+
+        lda v_city_x,y
+        sta temple_x
+
+        lda v_city_y,y
+
+        ; Stores the temple to reste it in a new game
+        sta temple_y
+        asl
+        asl
+        asl
+        asl
+        clc
+        adc v_city_x,y
+
+        
+
+        ;sta mem_mon+1
+
+        ; ldx v_city_x,y
+        ; stx player_x
+        ; ldx v_city_y,y
+        ; stx player_y
+        ; jsr Return_LOC_in_X
+
+        ; stx mem_mon+3
+
+        ; Divide by 2
+        ;txa
+        ; save the original value
+        ; I wiill use it soon again
+        tay
+        lsr
+        tax
+
+        ;stx mem_mon+2
+       
+
+        ; Load again LOC number to see
+        ; if it is pair or odd
+        ; To see whcih part of the byte use
+        tya
+        and #%00000001
+        bne @LOC_is_odd ; odd
+        ; Change the higher part of the byte to put the temple
+        
+        lda #FINAL_LOC
+        asl
+        asl
+        asl
+        asl
+        ;sta mem_mon+3
+        clc
+        adc row00,x
+        ; Done
+        
+        jmp @Exit
+
+
+
+@LOC_is_odd
+        ; change the lower part
+        lda #FINAL_LOC
+        sta mem_mon+3
+        clc
+        adc row00,x
+        
+        ; Done
+        ;jmp @Exit
+
+@Exit
+        sta row00,x
+        lda row00,x
+        sta mem_mon+4
         rts
 
 ;---------------------------------------
@@ -116,6 +264,22 @@ PrintLife
         jsr CR
         rts
 
+;-----
+PrintPoints
+         ; change this for total points
+        lda #<str_points
+        ldy #>str_points
+        jsr PRTSTR
+        
+        lda #$0
+        ldx points
+        jsr PRTFIX 
+
+        lda #<str_of_three
+        ldy #>str_of_three
+        jsr PRTSTR
+
+
 ;--------------------------
 ; Wrong name for a subroutine
 ; This one prints nothing
@@ -125,7 +289,7 @@ PrintLife
 PrintLOC
         ; check if player is in the temple
         lda player_x
-        cmp #$10
+        cmp #$10 ; This number is not in map
         bne @Not_in_Temple
 
         jsr Loc_Temple
@@ -134,7 +298,6 @@ PrintLOC
 @Not_in_Temple
         ; Calculate LOC number from x and y
         jsr Return_LOC_in_X
-        ;stx mem_mon
 
         ; I use 4 bits for LOC content
         ; So I dicie LOC / 2
@@ -145,7 +308,6 @@ PrintLOC
         ; Load LOC content
         tax
         lda row00,x
-        ;sta mem_mon+1
         tax
 
         ; Load again LOC number to see
@@ -160,21 +322,36 @@ PrintLOC
         lsr
         lsr
         lsr
-        ;sta mem_mon+2
-        ;jmp @Print_LOC
+
         jmp @Exit
 
 @LOC_is_odd
         txa
         and #%00001111 
-        ;sta mem_mon+3
 
 @Exit
         ; Saves current LOC type
         sta current_loc_type 
         rts
 
+; Desert does not use this subroutine
+@Print_LOC
+        pha
+        lda #<str_you_are
+        ldy #>str_you_are
+        jsr PRTSTR
+        pla
 
+        asl
+        tax
+        txa
+        ;lda v_descriptions,x
+        ;ldy v_descriptions,x+1
+        jsr PRTSTR
+        jsr CR
+        
+        ; Saltar a la rutina de la loc
+        rts
 
 ;--------------
 Jump_LOC
@@ -316,27 +493,21 @@ CheckVerb
 ExecuteCommand
         ;lda verb_index ; already loaded
         lda player_x
-        
-        ; check if player is in the temple
+        ; sta mem_mon
         cmp #$10
         bne @Jump_to_Cmd
-
-        ; Player is in temple
+        ; Estoy en el templo
         lda verb_index
-
-        ; check if is a movement verb
         sec
         sbc #$4
+        ; sta mem_mon+1
         bcs @Jump_to_Cmd
-        
-        ; It is a movement verb
-        ; I place the player in the temple loc
+        ; Es verbode movimiento.
+        ; Salgo del templo
         lda #TEMPLE_X
         sta player_x
         lda #TEMPLE_Y
         sta player_y
-
-        ; Repeat main loop
         jmp LocLoop
 
 @Jump_to_Cmd      
@@ -413,6 +584,9 @@ Reduce_Water_Life
         stx water
         jmp @Exit
 
+; I dop it with sbc instead of dec
+; tod etect if life goes under 0 
+; and the player is dead.
 @Reduce_Life
         lda life
         sec
@@ -481,6 +655,7 @@ Fill_Cmd
     
 
 ;--- Take Command ---------------
+; Se puede reutilizar mucho código aquí
 Take_Cmd
         ; Take Idol
         lda current_loc_type
@@ -498,7 +673,7 @@ Take_Cmd
        rts
 
 @Take_Flask
-        lda current_loc_type
+        ;lda current_loc_type
         cmp #FLASK_LOC
         bne @Take_Compass
 
@@ -512,12 +687,10 @@ Take_Cmd
         lda #<str_take_flask
         ldy #>str_take_flask
         jsr PRTSTR
-
-        
         rts
 
 @Take_Compass
-        lda current_loc_type
+        ;lda current_loc_type
         cmp #COMPASS_LOC
         bne @Take_Ankh
 
@@ -536,11 +709,11 @@ Take_Cmd
        rts
 
 @Take_Ankh
-        lda current_loc_type
+        ;lda current_loc_type
         ;sta mem_mon
         ;sta mem_mon+1
         cmp #ANKH_LOC
-        bne Invalid_Take ; No more items
+        bne @Take_Rose ; No more items
 
         ldy #F_ANKH
         jsr read_flag_y
@@ -552,8 +725,48 @@ Take_Cmd
 
         rts
 
+@Take_Rose
+        ;lda current_loc_type
+        cmp #ROSE_LOC
+        beq Check_Take_Rose ; No more items
+
+
 Invalid_Take
         jsr Print_You_Cannot
+        rts
+
+
+; Player is ina rose loc
+; We have to dscover which loc
+Check_Take_Rose
+        ; there are several rose.
+        ; I have to discover wich rose is the player
+        ldy #F_ROSE_FIRST ; Index of the flag of roses
+
+        ; Chek first rose
+        ; Flag deens on player position
+        ;lda player_x
+        ;cmp #$d
+        
+        ; Check flag
+        jsr Return_flag_rose_y
+        jsr read_flag_y
+        bne Invalid_Take
+
+        ; no need to cjek others
+        ;bne @Second_Rose
+
+        ;bne Invalid_Take
+        ; Change flag
+        jsr set_flag_y
+        ; Increase points
+        inc points
+
+;@Print_and_exit
+        ; change this for total points
+        ;lda #<str_gain_one_point
+        ;ldy #>str_gain_one_point
+        jsr PrintPoints
         rts
 
 
@@ -571,17 +784,19 @@ Guide_Cmd
         lda player_y
         ;sta mem_mon
         sec
-        sbc #DESTINATION_Y
+        sbc temple_y
         ;sta mem_mon+1
+        ; Print nothing if both are equals
         beq @Check_X
         bcc @Y_Minus
-        ; X is bigger, go south
+        ; Y is bigger, go south
         lda #<str_south
         ldy #>str_south
         jsr PRTSTR
         jmp @Check_X
 
 @Y_Minus
+        ; Go north
         lda #<str_north
         ldy #>str_north
         jsr PRTSTR
@@ -591,17 +806,19 @@ Guide_Cmd
         lda player_x
         ;sta mem_mon
         sec
-        sbc #DESTINATION_X
+        sbc #temple_x
         ;sta mem_mon+1
         beq @End
         bcc @X_Minus
-        ; Y is bigger, 
+        ; X is bigger,
+        ; go west
         lda #<str_west
         ldy #>str_west
         jsr PRTSTR
         rts
 
 @X_Minus
+        ; Go east
         lda #<str_east
         ldy #>str_east
         jsr PRTSTR
@@ -656,12 +873,12 @@ Print_You_Cannot
 
 ;---
 Inventory_Cmd
-        ldy #$4
         ;sty mem_mon
-
         lda #<str_carry
         ldy #>str_carry
         jsr PRTSTR
+
+        ldy #$1
 
 @Loop
         tya
@@ -669,6 +886,9 @@ Inventory_Cmd
         pha
         jsr read_flag_y
         beq @Next
+        
+        ; If flag is set, player carries the item
+        ;  I calculate in X the index of the item's name
         pla
         ;
         pha
@@ -679,12 +899,6 @@ Inventory_Cmd
         tax
         ;sta mem_mon,x
         
-        ;ldx #$0
-        ;lda v_item_names,x
-        ;sta mem_mon,x
-        ;lda v_item_names,x+1
-        ;sta mem_mon,x+1
-        
         lda v_item_names,x
         ldy v_item_names,x+1
         jsr PRTSTR
@@ -692,7 +906,8 @@ Inventory_Cmd
 @Next
         pla
         tay
-        dey
+        iny
+        cmp #$5
         bne @Loop
 
 ;@End
@@ -719,15 +934,13 @@ Help_Cmd
 ;---- LOCS ---------------------------------
 
 
-Print_You_Are
+;---------
+Loc_Empty
+        ;pha
         lda #<str_you_are
         ldy #>str_you_are
         jsr PRTSTR
-        rts
-
-;---------
-Loc_Empty
-        jsr Print_You_Are
+        ;pla
 
         lda #<str_lost_loc0
         ldy #>str_lost_loc0
@@ -751,7 +964,10 @@ Loc_Birds
 
 ;---------
 Loc_Oasis
-        jsr Print_You_Are
+        lda #<str_you_are
+        ldy #>str_you_are
+        jsr PRTSTR
+        ;pla
 
         lda #<str_oasis
         ldy #>str_oasis
@@ -783,15 +999,22 @@ Loc_Ruk
         jsr read_flag_y
         bne @Exit
 
+
         lda #<str_ruk_attack
         ldy #>str_ruk_attack
         jsr PRTSTR
         jsr CR
 
+        ; Sound effect
+        ; Halt the game
+        lda #SOUND_1
+        sta tmp_a
+        jsr SR_Sound
+
         lda life
         sec
         sbc #RUK_DAMAGE
-        ; Less than 0 
+        ; Estee s sis e desborda 
         bcc Player_Is_Dead
         sta life
         jsr PrintLife
@@ -893,6 +1116,12 @@ Loc_Scorpion
         ldy #>str_scorpion_attack
         jsr PRTSTR
         jsr CR
+
+        ; Sound effect
+        ; Halt the game
+        lda #SOUND_2
+        sta tmp_a
+        jsr SR_Sound
 
         lda life
         sec
@@ -1002,6 +1231,7 @@ Loc_Final
         lda #<str_final
         ldy #>str_final
         jsr PRTSTR
+        jsr PrintPoints
         jsr SR_Press_Return
         jmp Game_Begin
         rts
@@ -1018,6 +1248,61 @@ Loc_Enemy_North
         lda #<str_enemy_north
         ldy #>str_enemy_north
         jsr PRTSTR        
+        rts
+
+;----------------------
+; Take command uses this subrotuine too
+; No input paarmeters. Uses ht current loc already stors in memory
+Return_flag_rose_y
+        ; In other case, do nothing
+        ; roses are not in inv, so I lllook the flag
+        ; Locs of the rsose have been selected
+        ; so, the two lower bytes indicates the index of the flag
+
+        jsr Return_LOC_in_X
+        dex
+
+        stx mem_mon
+
+        txa
+        and #%00000011
+        ; a is 0, 1, or 2
+        ; I add the value of the first flags
+        ; so I have the index
+        clc
+        adc #F_ROSE_FIRST
+      
+        sta mem_mon+1
+  
+        tay
+        rts
+
+
+;-----
+Loc_Desert_Rose
+        jsr Loc_Empty
+
+        ; Show rose if it is till there
+        
+        jsr Return_flag_rose_y
+
+        ; Now Y have the number of the flag os the rose.
+        ; Lets check
+
+        jsr read_flag_y
+        bne @Exit
+
+
+        lda #<str_you_see
+        ldy #>str_you_see
+        jsr PRTSTR        
+
+
+        lda #<str_desert_rose
+        ldy #>str_desert_rose
+        jsr PRTSTR        
+
+@Exit
         rts
 
 
@@ -1078,7 +1363,7 @@ set_flag_y
 clear_flag_y
         jsr set_x_y
         lda masks,y
-        eor #$FF ; Invierto la mask
+        eor #$FF ; Invert la mask
         and flags,x
         sta flags,x
         rts ; Acumulador
@@ -1103,6 +1388,41 @@ SR_Press_Return
         
         rts
 
+
+;--- Sounds --------------------------------
+
+; Stores in tmp_a the channel you
+; want to use
+SR_Sound
+        ; Hihh byte of mem address for souns
+        ; is always $90
+        lda #$90
+        sta tmp_b
+
+        ldx #$FF
+@Loop1
+        txa ; Saving x value
+        ldx #$0
+        sta (tmp_a,x)
+        tax
+
+        ; Second loop
+        ldy #$ff
+@Loop2
+        dey
+        ; A little delay
+        nop
+        bne @Loop2
+        dex
+        bne @Loop1
+
+        ; Turn off sound
+        txa ; x is 0 
+        sta ($fb,x)
+
+        rts
+
+
 ;--- Data ------------------------------------
 
 ;-- Constants
@@ -1110,10 +1430,17 @@ INITIAL_WATER = $c
 INITIAL_LIFE = $c
 RUK_DAMAGE = $3
 SCORPION_DAMAGE = $1
-DESTINATION_Y = $c ; Game end when you arrives
-DESTINATION_X = $d
+; City position is random
+;DESTINATION_Y = $c ; Game end when you arrives
+;DESTINATION_X = $d
 TEMPLE_X = $7 ; Coordinates of temple
 TEMPLE_Y = $7
+SOUND_1 = $0c
+SOUND_2 =  $0d
+
+
+; Address from page 0
+; the comments indicates the origial function of the address
 
 ; $3-$4, ADRAY1, vector to flating point / integer routine (INTIDX)
 ; Never used by basic
@@ -1142,16 +1469,32 @@ verb_index = $C
 ; $D Type of variable: string / numeric
 ; no funciona
 
-; $e
+;  NTFLG. Numeric variable type: 128 ($80)=integer, 00=floating point
+; This is not meaningful unless location 13 ($D) is set to zero$e
 current_loc_type = $e
 
-; Empty page 0 psotiton 
+
+;  GARBFL ($f). Flag byte: LIST quote/collect done/tokenize character.
+; Init value $0
+temple_x = $f
+
+; SUBFLG ($10). Subscript or FN X flag byte.
+temple_y = $10
+
+; INPFLG ($11). Indicates which of READ, INPUT, or GET is active.
+
+; TAN/ SIN sign/comparison results.
+points = $12
+
+; 
+
+; Empty page 0 positions 
 tmp_a = $fb
 tmp_b = $fc
 
 INPUT_BUFFER = $200 ; Explain
 
-;mem_mon BYTE $0, $0, $0, $0, $0, $0
+mem_mon BYTE $0, $0, $0, $0, $0, $0
 
 ;--- Flags
 ;flags        BYTE $0, $0
@@ -1162,12 +1505,15 @@ F_FLASK = $2
 F_FILL_FLASK = $5 ; Indicates if flask is full (set) or empty (0)
 F_COMPASS = $4
 F_ANKH = $3
+F_ROSE_FIRST = $6
+; Reserve as many flags as roses
+ 
 
 masks
         BYTE %00000001, %00000010, %00000100, %00001000, %00010000, %00100000, %01000000, %10000000
 
 ;--- Items ----------
-; Estos objetos estan duplicados.
+
 str_idol_name TEXT "idol ", $0
 str_flask_name TEXT "flask ", $0
 sr_compass_name TEXT "compass ", $0
@@ -1195,8 +1541,7 @@ verb_pointers WORD North_Cmd, South_Cmd, East_Cmd, West_Cmd, Look_Cmd, Inventory
               WORD Help_Cmd
 
 ;--- Map ---------------
-EMPTY=%00000000
-
+EMPTY=%00000000 ; Two empty locations together.
 ; Each loc is 4 bits
 ; 0001 - Birds in the sky
 OASIS_LOC = $2; 0010 - Oasis
@@ -1211,27 +1556,31 @@ TEMPLE_LOC = $a ; Temple 1010
 ANKH_LOC = $b ; Object 4: Ankh 1011
 FINAL_LOC = $c ; End of game 1100
 ; Vision of an enemy 1101
-           ;0,1                        ;6, 7
-row00 BYTE EMPTY,     EMPTY, %00000110, %01000110, EMPTY,EMPTY, EMPTY, EMPTY
-row01 BYTE %01110000, EMPTY, EMPTY, %01100000, EMPTY, %00001001, EMPTY, %00100001
-row02 BYTE EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY,   EMPTY, %01100000
-row03 BYTE %00010000, EMPTY,EMPTY, %00010010, EMPTY, %00000101,%00000110, %01000110
-row04 BYTE %00100000, EMPTY,EMPTY, EMPTY,EMPTY, %01100000,EMPTY, %01100000
-row05 BYTE %00000110, EMPTY,EMPTY, EMPTY, %00000110, %10000110, EMPTY, EMPTY
-row06 BYTE %01101000, %01100000, %00100000, EMPTY,EMPTY, %01100000, EMPTY, %01110000
-row07 BYTE %00000110, EMPTY,EMPTY, %00001010,EMPTY, %00000010,EMPTY, EMPTY
-row08 BYTE EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY,EMPTY, EMPTY
-row09 BYTE EMPTY, %01110000,EMPTY, EMPTY,EMPTY, %11010110,EMPTY, EMPTY
-row10 BYTE EMPTY, EMPTY,%00110011, EMPTY,EMPTY, %01100100,%01100000, %00000110
-row11 BYTE %00001011, EMPTY,EMPTY, EMPTY, %01100000, %00000110,EMPTY, %01100100
-row12 BYTE EMPTY, EMPTY,EMPTY, %00000110,%10000110, EMPTY,%00001100, %00000110
-row13 BYTE %00000010, %00010000,EMPTY, %00000001, %00000110, EMPTY,%00010001, %00100000
-row14 BYTE EMPTY, EMPTY,EMPTY, %00000001,EMPTY, EMPTY,EMPTY, EMPTY
-row15 BYTE EMPTY, EMPTY,EMPTY, %00000010,EMPTY, EMPTY,EMPTY, EMPTY
+ROSE_LOC = $e ; Desert rose 1110
+
+
+; final LOC is not in this map, it is generated.
+           ;0,1                             ;6, 7
+row00 BYTE EMPTY,     EMPTY,     %00000110, %01000110, EMPTY,     EMPTY,     EMPTY, EMPTY
+row01 BYTE %00000111, EMPTY,     EMPTY,     %01100000, EMPTY,     %00001001, EMPTY, %00100001
+row02 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00001110, %01100000
+row03 BYTE %00010000, EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00000101, %00000110, %01000110
+row04 BYTE %00100000, EMPTY,     %00000001, EMPTY,     EMPTY,     %01100000, EMPTY, %01100000
+row05 BYTE %00000110, EMPTY,     %00000010, EMPTY,     %00000110, %10000110, EMPTY, EMPTY
+row06 BYTE %01101000, %01100000, %00000001, EMPTY,     EMPTY,     %01100000, EMPTY, %01110000
+row07 BYTE %00000110, EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00000010,EMPTY, EMPTY
+row08 BYTE EMPTY,     EMPTY,     EMPTY,     %11100000, EMPTY,     EMPTY,EMPTY, EMPTY
+row09 BYTE EMPTY,     %01110000, EMPTY,     EMPTY,     EMPTY,     %11010110, EMPTY,     EMPTY
+row10 BYTE EMPTY,     EMPTY,     %00110011, %00001010, EMPTY,     %01100100, %01100000, %00000110
+row11 BYTE %00001011, EMPTY,     EMPTY,     EMPTY,     %01100000, %00000110,EMPTY, %01100100
+row12 BYTE EMPTY,     EMPTY,     EMPTY,     %00000110, %00000110, EMPTY,%00001100, %00000110
+row13 BYTE %00000010, %00010001, EMPTY,     EMPTY,     %00000110, EMPTY, EMPTY, EMPTY
+row14 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY, EMPTY,%00010001, %00100000 ; 119
+row15 BYTE EMPTY,     %00001110, EMPTY,     EMPTY,     EMPTY, EMPTY,EMPTY, EMPTY
 
 v_locs  WORD Loc_Empty, Loc_Birds, Loc_Oasis, Loc_Oasis_East, Loc_Ruk, Loc_Idol
         WORD Loc_Vibrates, Loc_Flask, Loc_Scorpion, Loc_Compass, Loc_Found_Temple
-        WORD Loc_Ankh, Loc_Final, Loc_Enemy_North
+        WORD Loc_Ankh, Loc_Final, Loc_Enemy_North, Loc_Desert_Rose
 
 ;--- String -----------
 
@@ -1249,6 +1598,10 @@ str_press_return
         BYTE    RETURN
         TEXT "press return", $0
 str_help        text "read manual", RETURN, $0
+;str_gain_one_point TEXT "you gain 1 point", RETURN, $0
+str_points      TEXT "points: ", $0
+str_of_three    TEXT " of 3", RETURN, $0
+
 ;--- LOCs -------------
 
 str_you_are     TEXT "you are ", $0
@@ -1266,24 +1619,30 @@ str_ruk_attack  TEXT "a ruk attacks you!", $d, $0
 str_idol        TEXT "an idol on thesand", $d, $0 ; No space before sand
 str_idol_vibrates TEXT "the idol vibrates", $d, $0
 str_flask       TEXT "a flask on thesand", $d, $0 ; No space before sand
-str_take_flask  TEXT "fill it with water", $0
+str_take_flask  TEXT "fill it with water", RETURN, $0
 str_scorpion_attack TEXT "a gigant scorpion", $d, "attacks you!", $0 ; TODO Hacer comun el attacks you
 str_broken_flask    TEXT "scorpion destroys your flask", RETURN, $0
 str_compas_point    TEXT "compass points ", $0
 str_take_compass    TEXT "you can guide yourself", $0
-str_in_the_temple   TEXT "you are in the temple", RETURN, "you can rest and you", RETURN
-                    TEXT "can drink", RETURN, $0
+str_in_the_temple   TEXT "you are in the temple", RETURN, "you can rest and drink", RETURN, $0
+                    ;TEXT "can ", RETURN, $0
 str_compass TEXT "a compass on  the sand", $d, $0 ; Extra space 
 str_ankh    TEXT "a corpse with", RETURN,"an ankh" , $d, $0
 str_temple_found TEXT "there is a temple hereyou may try to enter", RETURN, $0 ; No space
 str_enemy_north  TEXT "an assasin at", RETURN, "the north", RETURN, $0
+str_desert_rose TEXT "a desert rose", RETURN, $0
+
+;--- Random temple ---------
+
+v_city_x BYTE $2, $5, $9, $d, $f, $3, $2, $9, $f, $f
+v_city_y BYTE $e, $f, $f, $c, $9, $a, $e, $f, $9, $f 
 
 ;--- Beginning and end ------
 
 str_intro       TEXT "you are lost in the", RETURN
                 TEXT "desert", RETURN
                 TEXT "you must find the city" ; No Return here
-                TEXT "of al jadur before you" ; No Return here
+                TEXT "of al-jadur before you" ; No Return here
                 TEXT "run out of water and", RETURN 
                 TEXT "life", RETURN, RETURN
                 TEXT "desert is full of", RETURN

@@ -26,14 +26,20 @@ Source code of the version used in the development guide.
 *Desert VIC-20.asm*  
 Source code for VIC-20.
 
-*Desert C-64.asm*  
-Source code for C-64.
-
 *Desert VIC-20.prg*  
 Binary for VIC-20. Drag & drop on Vice (or other emulator) to play.
+
+*Superdesert VIC-20.asm*  
+Source code for undexpanded VIC-20.
+
+*Superdesert VIC-20.prg*  
+Same game than Desert, but city is placed randomly and you can take desert roses for points.
+
+*Desert C-64.asm*  
+Source code for C-64.
 
 *Desert C-64.prg*  
 Binary for Commodore 64. Drag & drop on Vice (or other emulator) to play.
 
 *Manual.pdf*  
-Basic commands and extra help if you need it.
+Basic commands and extra help if you need it. Same manual for all games.

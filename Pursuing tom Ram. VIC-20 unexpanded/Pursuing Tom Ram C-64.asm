@@ -31,6 +31,9 @@ P0_TMP_BYTE = $fd
 ;--- Main --------------------------
 
 Game_Begin
+        ldx #$ff
+        txs
+        
         ; Init variables
         jsr Init
         ; show intructions of the game

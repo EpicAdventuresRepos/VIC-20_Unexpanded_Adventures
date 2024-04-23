@@ -34,7 +34,7 @@ CLEAR = $e55f
 
 ; Constanst
 RETURN = #$0D
-
+SPACE = $20
 
 ; Memory addreesses
 INPUT_BUFFER = $200
@@ -47,6 +47,10 @@ P0_TMP_BYTE = $fd
 ;--- Main subroutine --------------------------
 
 Game_Begin
+        ; Reset stack
+        ldx #$ff
+
+        txs
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -834,7 +838,7 @@ Name_Is_Item
         lda name_index
         tax        
         ; If name is bigger than the cosntant, 
-        ; then the player cannot take ir
+        ; then the player cannot take it
         sec
         sbc #OBJECTS_NUMER 
         rts
@@ -1407,16 +1411,10 @@ PS_Check_read_Diary
         rts
 
 
-;-------------------------
-Debug_BRK
-        brk
 
 ;--- Data -------------------------------------------
 
-;--- Storage -------
-;*=$fb ; Si lo pongo aqui me convierte la pantalla en @
-
-; 
+  
 
 ;mem_mon       BYTE $0, $0, $0, $0, $0, $0, $0, $0, $0
 verb            BYTE $0, $0 ; Input from keyboard

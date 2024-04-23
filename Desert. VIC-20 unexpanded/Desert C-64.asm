@@ -24,6 +24,9 @@ SPACE = $20 ; Space
 ;--- Main --------------------------
 
 Game_Begin
+        ldx #$ff
+        txs
+        
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -1237,7 +1240,7 @@ str_flask_name TEXT "flask ", $0
 sr_compass_name TEXT "compass ", $0
 str_ankh_name TEXT "ankh ", $0
 
-v_item_names    WORD str_idol_name, str_flask_name, sr_compass_name, str_ankh_name
+v_item_names    WORD str_idol_name, str_flask_name, str_ankh_name, sr_compass_name
 
 
 ; --- Verbs ----------

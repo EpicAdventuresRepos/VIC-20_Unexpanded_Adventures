@@ -24,6 +24,10 @@ SPACE = $20 ; Space
 ;--- Main --------------------------
 
 Game_Begin
+        ; Reset stack
+        ldx #$ff
+        txs
+
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -436,6 +440,9 @@ Reduce_Water_Life
         stx water
         jmp @Exit
 
+; I dop it with sbc instead of dec
+; tod etect if life goes under 0 
+; and the player is dead.
 @Reduce_Life
         lda life
         sec
@@ -1247,7 +1254,7 @@ str_flask_name TEXT "flask ", $0
 sr_compass_name TEXT "compass ", $0
 str_ankh_name TEXT "ankh ", $0
 
-v_item_names    WORD str_idol_name, str_flask_name, sr_compass_name, str_ankh_name
+v_item_names    WORD str_idol_name, str_flask_name, str_ankh_name, sr_compass_name
 
 
 ; --- Verbs ----------
@@ -1378,8 +1385,3 @@ str_final       TEXT "you have found the", RETURN
 str_you_die     TEXT RETURN, RETURN, "you will never leave", RETURN
                 TEXT "this burning desert", RETURN, $0
 
-; ¿Por qué no guardas x ew Y juntas en el byte de LOC?
-; el código que separa los tpos de loc te dirve para 
-; separar estas también
-; Meter todo lo único en un mismo método que compruebe núemros de LOC
-; y así puedo agnar tiposd e casillas.
