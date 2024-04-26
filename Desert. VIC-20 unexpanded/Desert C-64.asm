@@ -24,9 +24,7 @@ SPACE = $20 ; Space
 ;--- Main --------------------------
 
 Game_Begin
-        ldx #$ff
-        txs
-        
+
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -34,12 +32,14 @@ Game_Begin
         
 LocLoop
         jsr CLRS
-        ; TODO check if you arrived
         jsr PrintStats
         jsr PrintLOC
         jsr Jump_LOC
 
 MainLoop
+        ldx #$ff
+        txs
+        
         jsr InputCommand ; get command
         jsr EvalCommand
         jmp MainLoop
