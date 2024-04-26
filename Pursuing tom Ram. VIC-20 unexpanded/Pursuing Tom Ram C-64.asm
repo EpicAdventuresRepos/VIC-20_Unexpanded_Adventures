@@ -31,9 +31,6 @@ P0_TMP_BYTE = $fd
 ;--- Main --------------------------
 
 Game_Begin
-        ldx #$ff
-        txs
-        
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -44,12 +41,11 @@ LocLoop
         jsr PrintContent
 
 MainLoop
+	ldx #$ff
+        txs
         jsr InputCommand; get command
-        ; is quit
         jsr EvalCommand
-        ; jsr AfterCommand ; Nos e ejecuta depsués de un movimiento.
         jmp MainLoop
-        rts 
 
 ;---------------------------------------
 Init    

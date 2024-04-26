@@ -11,7 +11,7 @@
 ; 5: 1A74 > 1A69 > 1AD6 > 1C35 > 1C25 > 1D32 > 1D51 > 1D75
 ; Me han sobrado 139 bytes.
 ; 6: 1D49 > 1D3D > 1D88 > 1D45 > 1DEA > 1DF2 > 1E02 > 1DFA > 1DF6 > 1DF4 > 1DED > 1DE6
-; 7: 1DED
+; 7: 1DED > 1DEF
 
         BYTE    $0B, $10, $0A, $00, $9E, $34, $31, $30, $39, $00
         BYTE    $00, $00
@@ -37,10 +37,6 @@ P0_TMP_BYTE = $fd
 ;--- Main --------------------------
 
 Game_Begin
-        ; Reset stack
-        ldx #$ff
-        txs
-        
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -51,12 +47,13 @@ LocLoop
         jsr PrintContent
 
 MainLoop
+        ; Reset stack
+        ldx #$ff
+        txs
+        
         jsr InputCommand; get command
-        ; is quit
         jsr EvalCommand
-        ; jsr AfterCommand ; Nos e ejecuta depsués de un movimiento.
         jmp MainLoop
-        rts 
 
 ;---------------------------------------
 Init    

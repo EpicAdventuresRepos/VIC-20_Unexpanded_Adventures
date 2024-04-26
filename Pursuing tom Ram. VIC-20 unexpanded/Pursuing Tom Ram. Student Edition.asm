@@ -47,10 +47,6 @@ P0_TMP_BYTE = $fd
 ;--- Main subroutine --------------------------
 
 Game_Begin
-        ; Reset stack
-        ldx #$ff
-
-        txs
         ; Init variables
         jsr Init
         ; show intructions of the game
@@ -61,6 +57,10 @@ LocLoop
         jsr PrintContent
 
 MainLoop
+        ; Reset stack
+        ldx #$ff
+        txs
+
         jsr InputCommand; get command
         jsr EvalCommand
         jmp MainLoop
