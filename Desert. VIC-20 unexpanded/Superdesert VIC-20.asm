@@ -1,10 +1,12 @@
+; Superdesert
+
 *=$1001
 ; 1118 > 1151 > 1195 > 1209 > 1265 > 1278
 ; 12E5 > 1315 > 13CA > 13DE > 14D4 > 15D1
 ; 165A > 1720 > 1779 > 18CC > 18F3 > 1940
 ; 191D > 1958
 ; 1989
-; 19FD > 1A0B > 1A65 > 1A75
+; 19FD > 1A0B > 1A65 > 1A75 > 1a74
  
 
         BYTE    $0B, $10, $0A, $00, $9E, $34, $31, $30, $39, $00
@@ -41,21 +43,19 @@ Game_Begin
         jsr Instructions
         
 LocLoop
-        ; Reset stack
-        ldx #$ff
-        txs
-
         jsr CLRS
-        ; TODO check if you arrived
         jsr PrintStats
         jsr PrintLOC
         jsr Jump_LOC
 
 MainLoop
+        ; Reset stack
+        ldx #$ff
+        txs
+
         jsr InputCommand ; get command
         jsr EvalCommand
         jmp MainLoop
-;        rts 
 
 ;---------------------------------------
 Init    
@@ -107,28 +107,29 @@ Init_Sound_Color
 
 
 ;--------------------------------------
-; Quitar código repetido
 Random_City
 
-        ; Clean previous temple
-        ;
-        ; Ninguna casilla tiene nada al lado, así
-        ; que puedo ponerla a vacío tranquilamente.
-        ; Probar
-        lda temple_y
+        ; Clean previous city
+
+        ; Ocupa lo menos que rusar una subrutina
+        ; Porque la subrutina no divide entre dos
+        lda city_x
         asl
         asl
         asl
         asl
         clc
-        adc temple_x
+        adc city_y
         lsr
         tax
         lda #EMPTY
         sta row00,x 
-        
 
-
+        ; every loc is 4 bits only
+        ; the locations of city have nothing next
+        ; so I can save the whole byte safely.
+        lda #EMPTY
+        sta row00,x 
 
         ; Calculate a random number
         ; Between 0 and 9
@@ -140,18 +141,16 @@ Random_City
         ; A is always 0
         ; Random numer is in Y
 
-        ;sty mem_mon
-
         ; Repeat this code is shorter than call
         ; subroutine Return_LOC_in_X
 
         lda v_city_x,y
-        sta temple_x
+        sta city_x
 
         lda v_city_y,y
 
         ; Stores the temple to reste it in a new game
-        sta temple_y
+        sta city_y
         asl
         asl
         asl
@@ -159,30 +158,13 @@ Random_City
         clc
         adc v_city_x,y
 
-        
-
-        ;sta mem_mon+1
-
-        ; ldx v_city_x,y
-        ; stx player_x
-        ; ldx v_city_y,y
-        ; stx player_y
-        ; jsr Return_LOC_in_X
-
-        ; stx mem_mon+3
-
-        ; Divide by 2
-        ;txa
         ; save the original value
-        ; I wiill use it soon again
+        ; I will use it soon again
         tay
         lsr
         tax
 
-        ;stx mem_mon+2
-       
-
-        ; Load again LOC number to see
+         ; Load again LOC number to see
         ; if it is pair or odd
         ; To see whcih part of the byte use
         tya
@@ -195,7 +177,6 @@ Random_City
         asl
         asl
         asl
-        ;sta mem_mon+3
         clc
         adc row00,x
         ; Done
@@ -203,21 +184,15 @@ Random_City
         jmp @Exit
 
 
-
 @LOC_is_odd
         ; change the lower part
         lda #FINAL_LOC
-        sta mem_mon+3
         clc
         adc row00,x
-        
-        ; Done
-        ;jmp @Exit
 
 @Exit
         sta row00,x
         lda row00,x
-        sta mem_mon+4
         rts
 
 ;---------------------------------------
@@ -357,9 +332,6 @@ PrintLOC
 Jump_LOC
         ; Previous subroutine has to store in a
         ; the number of the LOC
-
-        ;jsr Return_LOC_in_X
-        ;txa
 
         lda current_loc_type
         asl
@@ -502,6 +474,7 @@ ExecuteCommand
         sbc #$4
         ; sta mem_mon+1
         bcs @Jump_to_Cmd
+
         ; Es verbode movimiento.
         ; Salgo del templo
         lda #TEMPLE_X
@@ -728,7 +701,8 @@ Take_Cmd
 @Take_Rose
         ;lda current_loc_type
         cmp #ROSE_LOC
-        beq Check_Take_Rose ; No more items
+        beq Check_Take_Rose 
+        ; No more items
 
 
 Invalid_Take
@@ -741,7 +715,7 @@ Invalid_Take
 Check_Take_Rose
         ; there are several rose.
         ; I have to discover wich rose is the player
-        ldy #F_ROSE_FIRST ; Index of the flag of roses
+        ; ldy #F_ROSE_FIRST ; Index of the flag of roses
 
         ; Chek first rose
         ; Flag deens on player position
@@ -750,14 +724,10 @@ Check_Take_Rose
         
         ; Check flag
         jsr Return_flag_rose_y
-        jsr read_flag_y
+        jsr read_flag_y ; This call changes y
         bne Invalid_Take
 
-        ; no need to cjek others
-        ;bne @Second_Rose
-
-        ;bne Invalid_Take
-        ; Change flag
+        jsr Return_flag_rose_y
         jsr set_flag_y
         ; Increase points
         inc points
@@ -766,8 +736,12 @@ Check_Take_Rose
         ; change this for total points
         ;lda #<str_gain_one_point
         ;ldy #>str_gain_one_point
-        jsr PrintPoints
-        rts
+        
+
+        ; Optimization. PrintPoints do the RTS
+        jmp PrintPoints
+        ;jsr PrintPoints
+        ;rts
 
 
 ;--- Guide command --------------
@@ -784,7 +758,7 @@ Guide_Cmd
         lda player_y
         ;sta mem_mon
         sec
-        sbc temple_y
+        sbc city_y
         ;sta mem_mon+1
         ; Print nothing if both are equals
         beq @Check_X
@@ -806,7 +780,7 @@ Guide_Cmd
         lda player_x
         ;sta mem_mon
         sec
-        sbc #temple_x
+        sbc city_x
         ;sta mem_mon+1
         beq @End
         bcc @X_Minus
@@ -1282,7 +1256,8 @@ Return_flag_rose_y
 Loc_Desert_Rose
         jsr Loc_Empty
 
-        ; Show rose if it is till there
+
+        ; Show rose if it is still there
         
         jsr Return_flag_rose_y
 
@@ -1296,7 +1271,6 @@ Loc_Desert_Rose
         lda #<str_you_see
         ldy #>str_you_see
         jsr PRTSTR        
-
 
         lda #<str_desert_rose
         ldy #>str_desert_rose
@@ -1368,6 +1342,7 @@ clear_flag_y
         sta flags,x
         rts ; Acumulador
 
+; Changes Y
 read_flag_y
         ; a - bit of the flag
         ; 0, not set
@@ -1434,7 +1409,7 @@ SCORPION_DAMAGE = $1
 ;DESTINATION_Y = $c ; Game end when you arrives
 ;DESTINATION_X = $d
 TEMPLE_X = $7 ; Coordinates of temple
-TEMPLE_Y = $7
+TEMPLE_Y = $A
 SOUND_1 = $0c
 SOUND_2 =  $0d
 
@@ -1476,10 +1451,10 @@ current_loc_type = $e
 
 ;  GARBFL ($f). Flag byte: LIST quote/collect done/tokenize character.
 ; Init value $0
-temple_x = $f
+city_x = $f
 
 ; SUBFLG ($10). Subscript or FN X flag byte.
-temple_y = $10
+city_y = $10
 
 ; INPFLG ($11). Indicates which of READ, INPUT, or GET is active.
 
@@ -1562,7 +1537,7 @@ ROSE_LOC = $e ; Desert rose 1110
 ; final LOC is not in this map, it is generated.
            ;0,1                             ;6, 7
 row00 BYTE EMPTY,     EMPTY,     %00000110, %01000110, EMPTY,     EMPTY,     EMPTY, EMPTY
-row01 BYTE %00000111, EMPTY,     EMPTY,     %01100000, EMPTY,     %00001001, EMPTY, %00100001
+row01 BYTE %00000111, EMPTY,     EMPTY,     %01100000, %10010000, EMPTY,    EMPTY, %00100001
 row02 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00001110, %01100000
 row03 BYTE %00010000, EMPTY,     EMPTY,     EMPTY,     EMPTY,     %00000101, %00000110, %01000110
 row04 BYTE %00100000, EMPTY,     %00000001, EMPTY,     EMPTY,     %01100000, EMPTY, %01100000
@@ -1573,8 +1548,8 @@ row08 BYTE EMPTY,     EMPTY,     EMPTY,     %11100000, EMPTY,     EMPTY,EMPTY, E
 row09 BYTE EMPTY,     %01110000, EMPTY,     EMPTY,     EMPTY,     %11010110, EMPTY,     EMPTY
 row10 BYTE EMPTY,     EMPTY,     %00110011, %00001010, EMPTY,     %01100100, %01100000, %00000110
 row11 BYTE %00001011, EMPTY,     EMPTY,     EMPTY,     %01100000, %00000110,EMPTY, %01100100
-row12 BYTE EMPTY,     EMPTY,     EMPTY,     %00000110, %00000110, EMPTY,%00001100, %00000110
-row13 BYTE %00000010, %00010001, EMPTY,     EMPTY,     %00000110, EMPTY, EMPTY, EMPTY
+row12 BYTE EMPTY,     EMPTY,     EMPTY,     %00000110, %10000110, EMPTY, EMPTY, %00000110
+row13 BYTE %00000010, %00010001, EMPTY,     EMPTY,     %01100000, EMPTY, EMPTY, EMPTY
 row14 BYTE EMPTY,     EMPTY,     EMPTY,     EMPTY,     EMPTY, EMPTY,%00010001, %00100000 ; 119
 row15 BYTE EMPTY,     %00001110, EMPTY,     EMPTY,     EMPTY, EMPTY,EMPTY, EMPTY
 
@@ -1634,8 +1609,8 @@ str_desert_rose TEXT "a desert rose", RETURN, $0
 
 ;--- Random temple ---------
 
-v_city_x BYTE $2, $5, $9, $d, $f, $3, $2, $9, $f, $f
-v_city_y BYTE $e, $f, $f, $c, $9, $a, $e, $f, $9, $f 
+v_city_x BYTE $2, $5, $9, $d, $d, $2, $2, $9, $5, $e
+v_city_y BYTE $e, $f, $f, $c, $c, $a, $e, $f, $f, $f 
 
 ;--- Beginning and end ------
 
